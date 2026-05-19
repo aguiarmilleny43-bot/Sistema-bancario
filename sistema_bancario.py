@@ -1,4 +1,3 @@
-
 """
 Sistema Bancário com Menu Interativo
 POO: Classe Abstrata, Herança e Polimorfismo
@@ -23,9 +22,9 @@ class ContaBancaria(ABC):
         if valor > 0:
             self._saldo += valor
             self._extrato.append(f"Depósito: +R$ {valor:.2f}")
-            print(f"Depósito de R$ {valor:.2f} realizado com sucesso!")
+            print(f"✓ Depósito de R$ {valor:.2f} realizado com sucesso!")
         else:
-            print("Valor de depósito inválido.")
+            print("✗ Valor de depósito inválido. Use um valor maior que zero.")
 
     # Método abstrato: cada tipo de conta saca de um jeito
     @abstractmethod
@@ -72,9 +71,9 @@ class ContaCorrente(ContaBancaria):
         if valor > 0 and valor <= saldo_disponivel:
             self._saldo -= valor
             self._extrato.append(f"Saque: -R$ {valor:.2f}")
-            print(f"Saque de R$ {valor:.2f} realizado com sucesso!")
+            print(f"✓ Saque de R$ {valor:.2f} realizado com sucesso!")
         else:
-            print("Saque negado. Saldo + limite insuficiente.")
+            print(f"✗ Saque negado. Saldo disponível: R$ {saldo_disponivel:.2f}")
 
 
 # ============================================================
@@ -88,15 +87,18 @@ class ContaPoupanca(ContaBancaria):
         if valor > 0 and valor <= self._saldo:
             self._saldo -= valor
             self._extrato.append(f"Saque: -R$ {valor:.2f}")
-            print(f"Saque de R$ {valor:.2f} realizado com sucesso!")
+            print(f"✓ Saque de R$ {valor:.2f} realizado com sucesso!")
         else:
-            print("Saque negado. Saldo insuficiente.")
+            print(f"✗ Saque negado. Saldo insuficiente. Saldo atual: R$ {self._saldo:.2f}")
 
     def aplicar_rendimento(self, taxa):
+        if taxa < 0:
+            print("✗ Taxa de rendimento não pode ser negativa.")
+            return
         rendimento = self._saldo * taxa
         self._saldo += rendimento
         self._extrato.append(f"Rendimento ({taxa*100:.2f}%): +R$ {rendimento:.2f}")
-        print(f"Rendimento de {taxa*100:.2f}% aplicado! (+R$ {rendimento:.2f})")
+        print(f"✓ Rendimento de {taxa*100:.2f}% aplicado! (+R$ {rendimento:.2f})")
 
 
 # ============================================================
@@ -109,8 +111,14 @@ class Cliente:
 
 
 # ============================================================
-# 5. MENU INTERATIVO
+# 5. FUNÇÕES AUXILIARES
 # ============================================================
+def validar_cpf(cpf):
+    """Valida formato básico do CPF"""
+    cpf = cpf.replace(".", "").replace("-", "")
+    return len(cpf) == 11 and cpf.isdigit()
+
+
 def buscar_conta(contas, numero):
     for c in contas:
         if c.numero == numero:
@@ -118,6 +126,31 @@ def buscar_conta(contas, numero):
     return None
 
 
+def obter_valor_positivo(mensagem):
+    """Obtém um valor positivo do usuário com tratamento de erro"""
+    while True:
+        try:
+            valor = float(input(mensagem))
+            if valor < 0:
+                print("✗ O valor não pode ser negativo.")
+                continue
+            return valor
+        except ValueError:
+            print("✗ Valor inválido. Digite um número válido.")
+
+
+def obter_inteiro(mensagem):
+    """Obtém um inteiro do usuário com tratamento de erro"""
+    while True:
+        try:
+            return int(input(mensagem))
+        except ValueError:
+            print("✗ Valor inválido. Digite um número inteiro.")
+
+
+# ============================================================
+# 6. MENU INTERATIVO
+# ============================================================
 def menu():
     contas = []
     proximo_numero = 1
@@ -129,6 +162,8 @@ def menu():
     proximo_numero += 1
     contas.append(ContaPoupanca(proximo_numero, cliente2, 2000.0))
     proximo_numero += 1
+
+    print("✓ Sistema iniciado com 2 contas de exemplo.\n")
 
     while True:
         print("\n========= BANCO LOVABLE =========")
@@ -144,71 +179,110 @@ def menu():
         opcao = input("Escolha uma opção: ").strip()
 
         if opcao == "1":
-            nome = input("Nome do titular: ")
-            cpf = input("CPF: ")
-            saldo = float(input("Saldo inicial: R$ "))
-            limite = float(input("Limite do cheque especial: R$ "))
-            cliente = Cliente(nome, cpf)
-            contas.append(ContaCorrente(proximo_numero, cliente, saldo, limite))
-            print(f"Conta Corrente nº {proximo_numero} criada para {nome}.")
-            proximo_numero += 1
+            try:
+                nome = input("Nome do titular: ").strip()
+                if not nome:
+                    print("✗ Nome não pode estar vazio.")
+                    continue
+
+                cpf = input("CPF (formato: 111.222.333-44): ").strip()
+                if not validar_cpf(cpf):
+                    print("✗ CPF inválido. Use o formato correto.")
+                    continue
+
+                saldo = obter_valor_positivo("Saldo inicial: R$ ")
+                limite = obter_valor_positivo("Limite do cheque especial: R$ ")
+
+                cliente = Cliente(nome, cpf)
+                contas.append(ContaCorrente(proximo_numero, cliente, saldo, limite))
+                print(f"✓ Conta Corrente nº {proximo_numero} criada para {nome}.")
+                proximo_numero += 1
+            except Exception as e:
+                print(f"✗ Erro ao criar conta: {e}")
 
         elif opcao == "2":
-            nome = input("Nome do titular: ")
-            cpf = input("CPF: ")
-            saldo = float(input("Saldo inicial: R$ "))
-            cliente = Cliente(nome, cpf)
-            contas.append(ContaPoupanca(proximo_numero, cliente, saldo))
-            print(f"Conta Poupança nº {proximo_numero} criada para {nome}.")
-            proximo_numero += 1
+            try:
+                nome = input("Nome do titular: ").strip()
+                if not nome:
+                    print("✗ Nome não pode estar vazio.")
+                    continue
+
+                cpf = input("CPF (formato: 111.222.333-44): ").strip()
+                if not validar_cpf(cpf):
+                    print("✗ CPF inválido. Use o formato correto.")
+                    continue
+
+                saldo = obter_valor_positivo("Saldo inicial: R$ ")
+
+                cliente = Cliente(nome, cpf)
+                contas.append(ContaPoupanca(proximo_numero, cliente, saldo))
+                print(f"✓ Conta Poupança nº {proximo_numero} criada para {nome}.")
+                proximo_numero += 1
+            except Exception as e:
+                print(f"✗ Erro ao criar conta: {e}")
 
         elif opcao == "3":
-            numero = int(input("Número da conta: "))
-            conta = buscar_conta(contas, numero)
-            if conta:
-                valor = float(input("Valor do depósito: R$ "))
-                conta.depositar(valor)
-            else:
-                print("Conta não encontrada.")
+            try:
+                numero = obter_inteiro("Número da conta: ")
+                conta = buscar_conta(contas, numero)
+                if conta:
+                    valor = obter_valor_positivo("Valor do depósito: R$ ")
+                    conta.depositar(valor)
+                else:
+                    print("✗ Conta não encontrada.")
+            except Exception as e:
+                print(f"✗ Erro: {e}")
 
         elif opcao == "4":
-            numero = int(input("Número da conta: "))
-            conta = buscar_conta(contas, numero)
-            if conta:
-                valor = float(input("Valor do saque: R$ "))
-                conta.sacar(valor)  # Polimorfismo
-            else:
-                print("Conta não encontrada.")
+            try:
+                numero = obter_inteiro("Número da conta: ")
+                conta = buscar_conta(contas, numero)
+                if conta:
+                    valor = obter_valor_positivo("Valor do saque: R$ ")
+                    conta.sacar(valor)  # Polimorfismo
+                else:
+                    print("✗ Conta não encontrada.")
+            except Exception as e:
+                print(f"✗ Erro: {e}")
 
         elif opcao == "5":
-            numero = int(input("Número da conta poupança: "))
-            conta = buscar_conta(contas, numero)
-            if isinstance(conta, ContaPoupanca):
-                taxa = float(input("Taxa de rendimento (ex: 0.05 para 5%): "))
-                conta.aplicar_rendimento(taxa)
-            else:
-                print("Conta inválida ou não é poupança.")
+            try:
+                numero = obter_inteiro("Número da conta poupança: ")
+                conta = buscar_conta(contas, numero)
+                if isinstance(conta, ContaPoupanca):
+                    taxa = obter_valor_positivo("Taxa de rendimento (ex: 0.05 para 5%): ")
+                    conta.aplicar_rendimento(taxa)
+                else:
+                    print("✗ Conta inválida ou não é poupança.")
+            except Exception as e:
+                print(f"✗ Erro: {e}")
 
         elif opcao == "6":
-            numero = int(input("Número da conta: "))
-            conta = buscar_conta(contas, numero)
-            if conta:
-                conta.exibir_extrato()
-            else:
-                print("Conta não encontrada.")
+            try:
+                numero = obter_inteiro("Número da conta: ")
+                conta = buscar_conta(contas, numero)
+                if conta:
+                    conta.exibir_extrato()
+                else:
+                    print("✗ Conta não encontrada.")
+            except Exception as e:
+                print(f"✗ Erro: {e}")
 
         elif opcao == "7":
-            print("\n--- Contas Cadastradas ---")
-            for c in contas:
-                tipo = "Corrente" if isinstance(c, ContaCorrente) else "Poupança"
-                print(f"Nº {c.numero} | {tipo} | {c.titular.nome} | Saldo: R$ {c.saldo:.2f}")
+            if not contas:
+                print("\n✗ Nenhuma conta cadastrada.")
+            else:
+                print("\n--- Contas Cadastradas ---")
+                for c in contas:
+                    tipo = "Corrente" if isinstance(c, ContaCorrente) else "Poupança"
+                    print(f"Nº {c.numero} | {tipo} | {c.titular.nome} | Saldo: R$ {c.saldo:.2f}")
 
         elif opcao == "0":
-            print("Encerrando o sistema. Até logo!")
+            print("\n✓ Encerrando o sistema. Até logo!")
             break
 
         else:
-            print("Opção inválida.")
+            print("✗ Opção inválida. Digite um número entre 0 e 7.")
 
 
 if __name__ == "__main__":
